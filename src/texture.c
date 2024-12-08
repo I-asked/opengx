@@ -405,6 +405,8 @@ void glTexImage2D(GLenum target, GLint level, GLint internalFormat, GLsizei widt
         return;
     if (target != GL_TEXTURE_2D)
         return; // FIXME Implement non 2D textures
+    if (!data)
+        return;
 
     GX_DrawDone(); // Very ugly, we should have a list of used textures and only wait if we are using the curr tex.
                    // This way we are sure that we are not modifying a texture which is being drawn
