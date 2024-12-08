@@ -54,6 +54,7 @@ GLfloat LightPosition[] = { 0.0f, 5.0f, 0.0f, 1.0f };
 GLuint filter;     /* Which Filter To Use */
 GLuint texture[3]; /* Storage for 3 textures */
 
+extern void ogx_initialize(void);
 
 /* function to release/destroy our resources and restoring the old desktop */
 void Quit( int returnCode )
