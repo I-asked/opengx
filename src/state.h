@@ -183,6 +183,11 @@ typedef struct glparams_
     OgxArrayReader texcoord_array[MAX_TEXTURE_UNITS];
     struct client_state
     {
+        unsigned vertex_valid : 1;
+        unsigned normal_valid : 1;
+        unsigned index_valid : 1;
+        unsigned color_valid : 1;
+        unsigned texcoord_valid : MAX_TEXTURE_UNITS;
         unsigned vertex_enabled : 1;
         unsigned normal_enabled : 1;
         unsigned index_enabled : 1;

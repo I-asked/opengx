@@ -135,6 +135,7 @@ static inline void update_projection_matrix()
     float near, far;
     get_projection_info(&type, &near, &far);
     memcpy(proj, glparamstate.projection_matrix, sizeof(Mtx44));
+
     float tmp = 1.0f / (far - near);
     /* TODO: also use the polygon_offset_factor variable */
     float zoffset = glparamstate.polygon_offset_fill ?
@@ -305,6 +306,21 @@ void ogx_initialize()
     glparamstate.cs.texcoord_enabled = 0;
     glparamstate.cs.index_enabled = 0;
     glparamstate.cs.color_enabled = 0;
+
+    glparamstate.cs.vertex_valid = 0;
+    glparamstate.cs.normal_valid = 0;
+    glparamstate.cs.texcoord_valid = 0;
+    glparamstate.cs.index_valid = 0;
+    glparamstate.cs.color_valid = 0;
+
+    _ogx_array_reader_init(&glparamstate.color_array, GX_VA_CLR0,
+                           NULL, 4, GL_UNSIGNED_BYTE, 0);
+
+    _ogx_array_reader_init(&glparamstate.normal_array, GX_VA_NRM,
+                           NULL, 3, GL_FLOAT, 0);
+
+    _ogx_array_reader_init(&glparamstate.vertex_array, GX_VA_POS,
+                           NULL, 3, GL_FLOAT, 0);
 
     glparamstate.texture_enabled = 0;
     glparamstate.pack_alignment = 4;
@@ -612,6 +628,7 @@ void glEnable(GLenum cap)
     default:
         break;
     }
+    _ogx_apply_state();
 }
 
 void glDisable(GLenum cap)
@@ -682,6 +699,7 @@ void glDisable(GLenum cap)
     default:
         break;
     }
+    _ogx_apply_state();
 }
 
 void glFogf(GLenum pname, GLfloat param)
@@ -1045,6 +1063,7 @@ void glPopMatrix(void)
         break;
     }
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glPushMatrix(void)
@@ -1103,6 +1122,7 @@ void glLoadMatrixf(const GLfloat *m)
         return;
     }
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glMultMatrixd(const GLdouble *m)
@@ -1142,6 +1162,7 @@ void glMultMatrixf(const GLfloat *m)
         guMtxConcat(*target, mtx, *target);
     }
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glLoadIdentity()
@@ -1166,6 +1187,7 @@ void glLoadIdentity()
     }
 
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glScalef(GLfloat x, GLfloat y, GLfloat z)
@@ -1194,6 +1216,7 @@ void glScalef(GLfloat x, GLfloat y, GLfloat z)
         guMtxApplyScale(*target, *target, x, y, z);
     }
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glTranslated(GLdouble x, GLdouble y, GLdouble z)
@@ -1227,6 +1250,7 @@ void glTranslatef(GLfloat x, GLfloat y, GLfloat z)
         guMtxApplyTrans(*target, *target, x, y, z);
     }
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
@@ -1259,6 +1283,7 @@ void glRotatef(GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
         guMtxConcat(*target, rot, *target);
     }
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glClearColor(GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
@@ -1378,6 +1403,7 @@ void glClear(GLbitfield mask)
     glparamstate.dirty.bits.dirty_cull = 1;
 
     glparamstate.draw_count++;
+    _ogx_apply_state();
 }
 
 void glDepthFunc(GLenum func)
@@ -1550,6 +1576,7 @@ void glPolygonOffset(GLfloat factor, GLfloat units)
     glparamstate.polygon_offset_factor = factor;
     glparamstate.polygon_offset_units = units;
     glparamstate.dirty.bits.dirty_matrices = 1;
+    _ogx_apply_state();
 }
 
 void glColorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha)
@@ -1623,12 +1650,14 @@ void glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *poin
 {
     _ogx_array_reader_init(&glparamstate.vertex_array, GX_VA_POS, pointer,
                            size, type, stride);
+    glparamstate.cs.vertex_valid = !!pointer;
 }
 
 void glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer)
 {
     _ogx_array_reader_init(&glparamstate.normal_array, GX_VA_NRM, pointer,
                            3, type, stride);
+    glparamstate.cs.normal_valid = !!pointer;
 }
 
 void glColorPointer(GLint size, GLenum type,
@@ -1636,6 +1665,7 @@ void glColorPointer(GLint size, GLenum type,
 {
     _ogx_array_reader_init(&glparamstate.color_array, GX_VA_CLR0, pointer,
                            size, type, stride);
+    glparamstate.cs.color_valid = !!pointer;
 }
 
 void glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
@@ -1644,6 +1674,9 @@ void glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *po
     _ogx_array_reader_init(&glparamstate.texcoord_array[unit],
                            GX_VA_TEX0 + unit, pointer,
                            size, type, stride);
+
+    if (pointer)  glparamstate.cs.texcoord_valid |= ~(1 << unit);
+    else          glparamstate.cs.texcoord_valid &= ~(1 << unit);
 }
 
 void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
@@ -2085,12 +2118,12 @@ bool _ogx_setup_render_stages()
         GX_SetNumChans(2);
 
         unsigned char vert_color_src = GX_SRC_VTX;
-        if (!glparamstate.cs.color_enabled || !glparamstate.lighting.color_material_enabled) {
+        if (!glparamstate.cs.color_enabled || !glparamstate.cs.color_valid || !glparamstate.lighting.color_material_enabled) {
             vert_color_src = GX_SRC_REG;
             GXColor acol, dcol, scol;
             bool ambient_set = false, diffuse_set = false, specular_set = false;
 
-            if (glparamstate.lighting.color_material_enabled) {
+            if (glparamstate.lighting.color_material_enabled && glparamstate.imm_mode.has_color) {
                 GXColor ccol = gxcol_new_fv(glparamstate.imm_mode.current_color);
 
                 if (glparamstate.lighting.color_material_mode == GL_AMBIENT ||
@@ -2391,9 +2424,9 @@ static bool setup_draw(uint8_t gxmode)
 {
     _ogx_efb_set_content_type(OGX_EFB_SCENE);
 
-    uint8_t texen = glparamstate.texture_enabled;
+    uint8_t texen = glparamstate.texture_enabled & glparamstate.cs.texcoord_valid;
     uint8_t color_provide = 0;
-    if (glparamstate.cs.color_enabled &&
+    if (glparamstate.cs.color_enabled && glparamstate.cs.color_valid &&
         (!glparamstate.lighting.enabled || glparamstate.lighting.color_material_enabled)) { // Vertex colouring
         if (glparamstate.lighting.enabled)
             color_provide = 2; // Lighting requires two color channels
@@ -2491,27 +2524,22 @@ void glFrustum(GLdouble left, GLdouble right, GLdouble bottom, GLdouble top,
                GLdouble near, GLdouble far)
 {
     Mtx44 mt;
-    f32 tmp;
 
-    tmp = 1.0f / (right - left);
-    mt[0][0] = (2 * near) * tmp;
-    mt[0][1] = 0.0f;
-    mt[0][2] = (right + left) * tmp;
-    mt[0][3] = 0.0f;
-    tmp = 1.0f / (top - bottom);
-    mt[1][0] = 0.0f;
-    mt[1][1] = (2 * near) * tmp;
-    mt[1][2] = (top + bottom) * tmp;
-    mt[1][3] = 0.0f;
-    tmp = 1.0f / (far - near);
-    mt[2][0] = 0.0f;
-    mt[2][1] = 0.0f;
-    mt[2][2] = -(far + near) * tmp;
-    mt[2][3] = -2.0 * (far * near) * tmp;
-    mt[3][0] = 0.0f;
-    mt[3][1] = 0.0f;
-    mt[3][2] = -1.0f;
-    mt[3][3] = 0.0f;
+    GLfloat x, y, a, b, c, d;
+ 
+    x = (2.0F*near) / (right-left);
+    y = (2.0F*near) / (top-bottom);
+    a = (right+left) / (right-left);
+    b = (top+bottom) / (top-bottom);
+    c = -(far+near) / ( far-near);
+    d = -(2.0F*far*near) / (far-near);  /* error? */
+
+#define M(col,row)  guMtxRowCol(mt,row,col)
+    M(0,0) = x;     M(0,1) = 0.0F;  M(0,2) = a;      M(0,3) = 0.0F;
+    M(1,0) = 0.0F;  M(1,1) = y;     M(1,2) = b;      M(1,3) = 0.0F;
+    M(2,0) = 0.0F;  M(2,1) = 0.0F;  M(2,2) = c;      M(2,3) = d;
+    M(3,0) = 0.0F;  M(3,1) = 0.0F;  M(3,2) = -1.0F;  M(3,3) = 0.0F;
+#undef M
 
     glMultMatrixf((float *)mt);
 }

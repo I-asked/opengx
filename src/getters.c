@@ -68,6 +68,7 @@ const GLubyte *glGetString(GLenum name)
 
 GLboolean glIsEnabled(GLenum cap)
 {
+    _ogx_apply_state();
     switch (cap) {
     case GL_ALPHA_TEST:
         return glparamstate.alphatest_enabled;
@@ -127,6 +128,8 @@ void glGetDoublev(GLenum pname, GLdouble *params)
 
 void glGetFloatv(GLenum pname, GLfloat *params)
 {
+    _ogx_apply_state();
+
     switch (pname) {
     case GL_CURRENT_RASTER_POSITION:
         floatcpy(params, glparamstate.raster_pos, 4);
@@ -161,6 +164,8 @@ void glGetFloatv(GLenum pname, GLfloat *params)
 // XXX: Need to finish glGets, important!!!
 void glGetIntegerv(GLenum pname, GLint *params)
 {
+    _ogx_apply_state();
+
     switch (pname) {
     case GL_ACTIVE_TEXTURE:
         *params = GL_TEXTURE0 + glparamstate.active_texture;
@@ -209,6 +214,9 @@ void glGetIntegerv(GLenum pname, GLint *params)
         break;
     case GL_MAX_TEXTURE_SIZE:
         *params = 1024;
+        return;
+    case GL_MAX_LIGHTS:
+        *params = 4;
         return;
     case GL_MODELVIEW_STACK_DEPTH:
         *params = MAX_MODV_STACK;

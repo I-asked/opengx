@@ -274,20 +274,26 @@ static inline void gl_matrix_to_gx(const GLfloat *source, Mtx mv)
 {
     float w = source[15];
     if (w != 1.0 && w != 0.0) {
-        for (int i = 0; i < 16; i++) {
-            mv[i%4][i/4] = source[i] / w;
+        for (int col = 0; col < 4; col++) {
+          for (int row = 0; row < 3; row++) {
+              guMtxRowCol(mv,row,col) = source[row+4*col] / w;
+          }
         }
     } else {
-        for (int i = 0; i < 16; i++) {
-            mv[i%4][i/4] = source[i];
+        for (int col = 0; col < 4; col++) {
+          for (int row = 0; row < 3; row++) {
+              guMtxRowCol(mv,row,col) = source[row+4*col];
+          }
         }
     }
 }
 
 static inline void gl_matrix_to_gx44(const GLfloat *source, Mtx44 mv)
 {
-    for (int i = 0; i < 16; i++) {
-        mv[i%4][i/4] = source[i];
+    for (int col = 0; col < 4; col++) {
+      for (int row = 0; row < 4; row++) {
+          guMtxRowCol(mv,row,col) = source[row+4*col];
+      }
     }
 }
 
