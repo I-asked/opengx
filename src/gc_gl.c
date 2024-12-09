@@ -313,15 +313,6 @@ void ogx_initialize()
     glparamstate.cs.index_valid = 0;
     glparamstate.cs.color_valid = 0;
 
-    _ogx_array_reader_init(&glparamstate.color_array, GX_VA_CLR0,
-                           NULL, 4, GL_UNSIGNED_BYTE, 0);
-
-    _ogx_array_reader_init(&glparamstate.normal_array, GX_VA_NRM,
-                           NULL, 3, GL_FLOAT, 0);
-
-    _ogx_array_reader_init(&glparamstate.vertex_array, GX_VA_POS,
-                           NULL, 3, GL_FLOAT, 0);
-
     glparamstate.texture_enabled = 0;
     glparamstate.pack_alignment = 4;
     glparamstate.unpack_alignment = 4;
@@ -986,7 +977,6 @@ void glEnd()
 
     _ogx_array_reader_init(&glparamstate.vertex_array, GX_VA_POS,
                            base->pos, 3, GL_FLOAT, stride);
-    glparamstate.cs.texcoord_valid = glparamstate.cs.texcoord_enabled = glparamstate.imm_mode.has_texcoord;
     glparamstate.cs.color_valid = glparamstate.cs.color_enabled = glparamstate.imm_mode.has_color;
     glparamstate.cs.normal_valid = glparamstate.cs.normal_enabled = glparamstate.imm_mode.has_normal;
     glparamstate.cs.vertex_valid = glparamstate.cs.vertex_enabled = 1;
@@ -1648,35 +1638,35 @@ void glEnableClientState(GLenum cap)
 
 void glVertexPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
 {
-    _ogx_array_reader_init(&glparamstate.vertex_array, GX_VA_POS, pointer,
-                           size, type, stride);
-    glparamstate.cs.vertex_valid = !!pointer;
+    glparamstate.cs.vertex_valid = pointer != NULL;
+    if (pointer)  _ogx_array_reader_init(&glparamstate.vertex_array, GX_VA_POS, pointer,
+                                         size, type, stride);
 }
 
 void glNormalPointer(GLenum type, GLsizei stride, const GLvoid *pointer)
 {
-    _ogx_array_reader_init(&glparamstate.normal_array, GX_VA_NRM, pointer,
-                           3, type, stride);
-    glparamstate.cs.normal_valid = !!pointer;
+    glparamstate.cs.normal_valid = pointer != NULL;
+    if (pointer)  _ogx_array_reader_init(&glparamstate.normal_array, GX_VA_NRM, pointer,
+                                         3, type, stride);
 }
 
 void glColorPointer(GLint size, GLenum type,
                     GLsizei stride, const GLvoid *pointer)
 {
-    _ogx_array_reader_init(&glparamstate.color_array, GX_VA_CLR0, pointer,
-                           size, type, stride);
-    glparamstate.cs.color_valid = !!pointer;
+    glparamstate.cs.color_valid = pointer != NULL;
+    if (pointer)  _ogx_array_reader_init(&glparamstate.color_array, GX_VA_CLR0, pointer,
+                                         size, type, stride);
 }
 
 void glTexCoordPointer(GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
 {
     int unit = glparamstate.cs.active_texture;
-    _ogx_array_reader_init(&glparamstate.texcoord_array[unit],
-                           GX_VA_TEX0 + unit, pointer,
-                           size, type, stride);
-
-    if (pointer)  glparamstate.cs.texcoord_valid |= ~(1 << unit);
+    if (pointer)  glparamstate.cs.texcoord_valid |= (1 << unit);
     else          glparamstate.cs.texcoord_valid &= ~(1 << unit);
+
+    if (pointer)  _ogx_array_reader_init(&glparamstate.texcoord_array[unit],
+                                         GX_VA_TEX0 + unit, pointer,
+                                         size, type, stride);
 }
 
 void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
@@ -1696,37 +1686,33 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
     switch (format) {
     case GL_V2F:
         glparamstate.cs.vertex_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
+        glparamstate.cs.vertex_valid = pointer != NULL;
         cstride = 2;
         break;
     case GL_V3F:
         glparamstate.cs.vertex_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
+        glparamstate.cs.vertex_valid = pointer != NULL;
         cstride = 3;
         break;
     case GL_N3F_V3F:
         glparamstate.cs.vertex_enabled = 1;
         glparamstate.cs.normal_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
-        glparamstate.cs.normal_valid = !!pointer;
+        glparamstate.cs.vertex_valid = pointer != NULL;
+        glparamstate.cs.normal_valid = pointer != NULL;
         cstride = 6;
         vertex_array += 3;
         break;
     case GL_T2F_V3F:
         glparamstate.cs.vertex_enabled = 1;
-        glparamstate.cs.texcoord_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
-        glparamstate.cs.normal_valid = !!pointer;
+        glparamstate.cs.vertex_valid = pointer != NULL;
         cstride = 5;
         vertex_array += 2;
         break;
     case GL_T2F_N3F_V3F:
         glparamstate.cs.vertex_enabled = 1;
         glparamstate.cs.normal_enabled = 1;
-        glparamstate.cs.texcoord_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
-        glparamstate.cs.normal_valid = !!pointer;
-        glparamstate.cs.texcoord_valid = !!pointer;
+        glparamstate.cs.vertex_valid = pointer != NULL;
+        glparamstate.cs.normal_valid = pointer != NULL;
         cstride = 8;
 
         vertex_array += 5;
@@ -1737,9 +1723,9 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
         glparamstate.cs.vertex_enabled = 1;
         glparamstate.cs.normal_enabled = 1;
         glparamstate.cs.color_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
-        glparamstate.cs.normal_valid = !!pointer;
-        glparamstate.cs.color_valid = !!pointer;
+        glparamstate.cs.vertex_valid = pointer != NULL;
+        glparamstate.cs.normal_valid = pointer != NULL;
+        glparamstate.cs.color_valid = pointer != NULL;
         cstride = 10;
 
         vertex_array += 7;
@@ -1748,8 +1734,8 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
     case GL_C3F_V3F:
         glparamstate.cs.vertex_enabled = 1;
         glparamstate.cs.color_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
-        glparamstate.cs.color_valid = !!pointer;
+        glparamstate.cs.vertex_valid = pointer != NULL;
+        glparamstate.cs.color_valid = pointer != NULL;
         cstride = 6;
 
         vertex_array += 3;
@@ -1757,10 +1743,11 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
     case GL_T2F_C3F_V3F:
         glparamstate.cs.vertex_enabled = 1;
         glparamstate.cs.color_enabled = 1;
-        glparamstate.cs.texcoord_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
-        glparamstate.cs.color_valid = !!pointer;
-        glparamstate.cs.texcoord_valid = !!pointer;
+        glparamstate.cs.texcoord_enabled |= (1 << glparamstate.active_texture);
+        glparamstate.cs.vertex_valid = pointer != NULL;
+        glparamstate.cs.color_valid = pointer != NULL;
+        if (pointer)  glparamstate.cs.texcoord_valid |= (1 << glparamstate.active_texture);
+        else          glparamstate.cs.texcoord_valid &= ~(1 << glparamstate.active_texture);
         cstride = 8;
 
         vertex_array += 5;
@@ -1770,11 +1757,12 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
         glparamstate.cs.vertex_enabled = 1;
         glparamstate.cs.normal_enabled = 1;
         glparamstate.cs.color_enabled = 1;
-        glparamstate.cs.texcoord_enabled = 1;
-        glparamstate.cs.vertex_valid = !!pointer;
-        glparamstate.cs.normal_valid = !!pointer;
-        glparamstate.cs.color_valid = !!pointer;
-        glparamstate.cs.texcoord_valid = !!pointer;
+        glparamstate.cs.texcoord_enabled |= (1 << glparamstate.active_texture);
+        glparamstate.cs.vertex_valid = pointer != NULL;
+        glparamstate.cs.normal_valid = pointer != NULL;
+        glparamstate.cs.color_valid = pointer != NULL;
+        if (pointer)  glparamstate.cs.texcoord_valid |= (1 << glparamstate.active_texture);
+        else          glparamstate.cs.texcoord_valid &= ~(1 << glparamstate.active_texture);
         cstride = 12;
 
         vertex_array += 9;
@@ -1788,6 +1776,7 @@ void glInterleavedArrays(GLenum format, GLsizei stride, const GLvoid *pointer)
     case GL_T4F_C4F_N3F_V4F:
     case GL_T4F_V4F:
         // TODO: Implement T4F! And UB color!
+        warning("Interleaved format %x NIY!", format);
         return;
     }
 
@@ -2060,6 +2049,8 @@ DrawMode _ogx_draw_mode(GLenum mode)
     case GL_QUADS:
         dm.mode = GX_QUADS;
         break;
+    default:
+        warning("Unknown GL mode! mode=%x", dm.mode);
     }
     return dm;
 }
@@ -2443,6 +2434,9 @@ void glArrayElement(GLint i)
 
 static bool setup_draw(uint8_t gxmode)
 {
+    if (!glparamstate.cs.vertex_valid)
+        return false;
+
     _ogx_efb_set_content_type(OGX_EFB_SCENE);
 
     uint8_t texen = glparamstate.texture_enabled & glparamstate.cs.texcoord_valid;

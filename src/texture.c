@@ -474,6 +474,13 @@ void glTexImage2D(GLenum target, GLint level, GLint internalFormat, GLsizei widt
                    &currtex->texobj, &ti, 0, 0);
 }
 
+void glTexSubImage1D(GLenum target, GLint level, GLint xoffset,
+                     GLsizei width, GLenum format, GLenum type,
+                     const GLvoid *data)
+{
+    glTexSubImage2D(target, level, xoffset, 0, width, 1, format, type, data);
+}
+
 void glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset,
                      GLsizei width, GLsizei height, GLenum format, GLenum type,
                      const GLvoid *data)

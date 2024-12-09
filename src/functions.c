@@ -402,7 +402,7 @@ static const ProcMap s_proc_map[] = {
     //PROC(glTexParameterfv),
     PROC(glTexParameteri),
     //PROC(glTexParameteriv),
-    //PROC(glTexSubImage1D),
+    PROC(glTexSubImage1D),
     PROC(glTexSubImage2D),
     PROC(glTranslated),
     PROC(glTranslatef),

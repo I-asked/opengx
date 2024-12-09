@@ -126,7 +126,7 @@ static TemplateSelectionInfo select_template(GLenum type,
             info.format.type = GX_CLR_RGB;
             info.format.size = GX_RGB8;
         }
-        info.same_type = type == GL_UNSIGNED_BYTE;
+        info.same_type = false;
         break;
     }
 
@@ -485,50 +485,52 @@ void _ogx_array_reader_init(OgxArrayReader *reader,
 
     VboType vbo = glparamstate.bound_vbo_array;
 
+#define READER_EMPLACE(T) \
+    do { static_assert(sizeof(T) <= sizeof(OgxArrayReader)); \
+         new (reader) T(info.format, vbo, data, stride);     } while (0)
+
     if (info.same_type) {
         /* No conversions needed, just dump the data from the array directly
          * into the GX pipe. */
         if (vbo) {
-            new (reader) DirectVboReader(info.format, vbo, data, stride);
+            READER_EMPLACE(DirectVboReader);
             return;
         }
         switch (type) {
         case GL_UNSIGNED_BYTE:
-            new (reader) SameTypeVertexReader<int8_t>(
-                info.format, vbo, data, stride);
+            READER_EMPLACE(SameTypeVertexReader<GLbyte>);
             return;
         case GL_SHORT:
-            new (reader) SameTypeVertexReader<int16_t>(
-                info.format, vbo, data, stride);
+            READER_EMPLACE(SameTypeVertexReader<GLshort>);
             return;
         case GL_INT:
-            new (reader) SameTypeVertexReader<int32_t>(
-                info.format, vbo, data, stride);
+            READER_EMPLACE(SameTypeVertexReader<GLuint>);
             return;
         case GL_FLOAT:
-            new (reader) SameTypeVertexReader<float>(
-                info.format, vbo, data, stride);
+            READER_EMPLACE(SameTypeVertexReader<GLfloat>);
             return;
         }
     }
 
     if (vertex_attribute == GX_VA_CLR0 || vertex_attribute == GX_VA_CLR1) {
         switch (type) {
-        /* The case GL_UNSIGNED_BYTE is handled by the SameTypeVertexReader */
+        case GL_UNSIGNED_BYTE:
+            READER_EMPLACE(ColorVertexReader<GLbyte>);
+            return;
         case GL_BYTE:
-            new (reader) ColorVertexReader<char>(info.format, vbo, data, stride);
+            READER_EMPLACE(ColorVertexReader<GLbyte>);
             return;
         case GL_SHORT:
-            new (reader) ColorVertexReader<int16_t>(info.format, vbo, data, stride);
+            READER_EMPLACE(ColorVertexReader<GLshort>);
             return;
         case GL_INT:
-            new (reader) ColorVertexReader<int32_t>(info.format, vbo, data, stride);
+            READER_EMPLACE(ColorVertexReader<GLint>);
             return;
         case GL_FLOAT:
-            new (reader) ColorVertexReader<float>(info.format, vbo, data, stride);
+            READER_EMPLACE(ColorVertexReader<GLfloat>);
             return;
         case GL_DOUBLE:
-            new (reader) ColorVertexReader<double>(info.format, vbo, data, stride);
+            READER_EMPLACE(ColorVertexReader<GLdouble>);
             return;
         }
     }
@@ -539,22 +541,24 @@ void _ogx_array_reader_init(OgxArrayReader *reader,
      * pipe (that is, GX_Position2f32() behaves exactly like
      * GX_TexCoord2f32()). */
     switch (type) {
+    /* The case GL_UNSIGNED_BYTE is handled by the SameTypeVertexReader */
     case GL_BYTE:
-        new (reader) CoordVertexReader<char>(info.format, vbo, data, stride);
+        READER_EMPLACE(CoordVertexReader<GLbyte>);
         return;
     case GL_SHORT:
-        new (reader) CoordVertexReader<int16_t>(info.format, vbo, data, stride);
+        READER_EMPLACE(CoordVertexReader<GLshort>);
         return;
     case GL_INT:
-        new (reader) CoordVertexReader<int32_t>(info.format, vbo, data, stride);
+        READER_EMPLACE(CoordVertexReader<GLint>);
         return;
     case GL_FLOAT:
-        new (reader) CoordVertexReader<float>(info.format, vbo, data, stride);
+        READER_EMPLACE(CoordVertexReader<GLfloat>);
         return;
     case GL_DOUBLE:
-        new (reader) CoordVertexReader<double>(info.format, vbo, data, stride);
+        READER_EMPLACE(CoordVertexReader<GLdouble>);
         return;
     }
+#undef READER_EMPLACE
 
     warning("Unknown array data type %x for attribute %d\n",
             type, vertex_attribute);
