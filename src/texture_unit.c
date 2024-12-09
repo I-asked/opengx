@@ -463,7 +463,7 @@ void _ogx_setup_texture_stages(u8 raster_reg_index, u8 channel)
     u8 prev_alpha = raster_alpha;
 
     u8 units_with_tex_coords = _ogx_arrays_get_units_with_tex_coord() |
-        glparamstate.cs.texcoord_enabled;
+        (glparamstate.cs.texcoord_enabled & glparamstate.cs.texcoord_valid);
 
     for (int tex = 0; tex < MAX_TEXTURE_UNITS; tex++) {
         if (!(glparamstate.texture_enabled & (1 << tex))) continue;

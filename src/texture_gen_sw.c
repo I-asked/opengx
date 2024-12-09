@@ -30,6 +30,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "texture_gen_sw.h"
 
 #include "debug.h"
+#include "state.h"
 #include "utils.h"
 
 #include <ogc/gu.h>
@@ -65,7 +66,7 @@ bool _ogx_texture_gen_sw_enabled(uint8_t unit)
     /* If the client prefers the inaccurate GPU implementation, let it be */
     if (hint != OGX_HINT_NONE && (glparamstate.hints & hint)) return false;
 
-    if (needs_normals && !glparamstate.cs.normal_enabled) return false;
+    if (needs_normals && !(glparamstate.cs.normal_enabled & glparamstate.cs.normal_valid)) return false;
 
     return true;
 }
